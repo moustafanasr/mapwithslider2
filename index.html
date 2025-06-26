@@ -13623,12 +13623,12 @@
 
     <script>
   /**
- * Interactive Country Map with Bounce Animation on Hover
+ * Interactive Country Map with Bounce Animation and Hover Effects
  * Features:
  * - Swiper carousel navigation
- * - Interactive map with bounce animations on hover
+ * - Bounce animation on location marker hover
+ * - Country color change on marker hover
  * - Smooth transitions between states
- * - Keyboard navigation support
  */
 
 (function() {
@@ -13640,7 +13640,8 @@
       primary: '#CE0F48',
       activeText: '#CE0F48',
       activeLocation: '#fff',
-      defaultLocation: '#CE0F48'
+      defaultLocation: '#CE0F48',
+      hoverCountry: '#CE0F48'
     },
     animations: {
       duration: '0.5s',
@@ -13693,9 +13694,6 @@
    * Initialization Functions
    * ---------------------------- */
 
-  /**
-   * Initialize the application
-   */
   function init() {
     injectBounceAnimationStyles();
     cacheDOMElements();
@@ -13705,9 +13703,6 @@
     setTimeout(() => activateCountry(CONFIG.defaultCountry), CONFIG.animations.initialDelay);
   }
 
-  /**
-   * Inject the bounce animation CSS
-   */
   function injectBounceAnimationStyles() {
     const style = document.createElement('style');
     style.textContent = `
@@ -13726,9 +13721,6 @@
     document.head.appendChild(style);
   }
 
-  /**
-   * Cache frequently used DOM elements
-   */
   function cacheDOMElements() {
     DOM.countrySlides = document.querySelectorAll('.swiper-slide');
     DOM.countryCards = document.querySelectorAll('.cards');
@@ -13740,9 +13732,6 @@
     `);
   }
 
-  /**
-   * Initialize Swiper instance
-   */
   function initSwiper() {
     DOM.swiper = new Swiper(CONFIG.swiper.selector, {
       slidesPerView: 'auto',
@@ -13755,9 +13744,6 @@
     });
   }
 
-  /**
-   * Setup CSS transitions for animated elements
-   */
   function setupTransitions() {
     DOM.countryNameElement.style.transition = `opacity ${CONFIG.animations.duration} ${CONFIG.animations.easing}, transform ${CONFIG.animations.duration} ${CONFIG.animations.easing}`;
     
@@ -13768,15 +13754,16 @@
     document.querySelectorAll('[class^="changeColorLocation"]').forEach(el => {
       el.style.transition = `transform ${CONFIG.animations.duration} ${CONFIG.animations.easing}, fill ${CONFIG.animations.duration} ${CONFIG.animations.easing}`;
     });
+
+    document.querySelectorAll('[class^="change"]').forEach(el => {
+      el.style.transition = `fill ${CONFIG.animations.duration} ${CONFIG.animations.easing}, stroke ${CONFIG.animations.duration} ${CONFIG.animations.easing}`;
+    });
   }
 
   /* ----------------------------
    * Event Handling Setup
    * ---------------------------- */
 
-  /**
-   * Setup all event listeners
-   */
   function setupEventListeners() {
     setupTextElementInteractions();
     setupSlideInteractions();
@@ -13785,9 +13772,6 @@
     setupKeyboardNavigation();
   }
 
-  /**
-   * Setup interactions for country text elements
-   */
   function setupTextElementInteractions() {
     DOM.textElements.forEach(textEl => {
       const country = getCountryFromElement(textEl);
@@ -13800,9 +13784,6 @@
     });
   }
 
-  /**
-   * Setup interactions for country slides
-   */
   function setupSlideInteractions() {
     DOM.countrySlides.forEach(slide => {
       const country = slide.classList[1];
@@ -13820,9 +13801,6 @@
     });
   }
 
-  /**
-   * Setup interactions for map elements
-   */
   function setupMapInteractions() {
     Object.keys(COUNTRIES).forEach(countryName => {
       const { mapClass, locationClass } = COUNTRIES[countryName];
@@ -13837,9 +13815,6 @@
     });
   }
 
-  /**
-   * Setup interactions for location markers with bounce animation on hover
-   */
   function setupLocationMarkerInteractions() {
     Object.keys(COUNTRIES).forEach(countryName => {
       const { locationClass, mapClass } = COUNTRIES[countryName];
@@ -13855,14 +13830,23 @@
           handleLocationClick(countryName);
         });
         
-        // Hover with bounce animation
+        // Hover with bounce animation and country color change
         el.addEventListener('mouseenter', () => {
           const slide = document.querySelector(`.swiper-slide.${countryName}`);
           if (!slide || !slide.classList.contains('active')) {
+            // Bounce animation
             el.classList.remove('location-bounce-hover');
             void el.offsetWidth; // Trigger reflow
             el.classList.add('location-bounce-hover');
             el.style.fill = CONFIG.colors.activeLocation;
+            
+            // Change country color
+            mapElements.forEach(mapEl => {
+              mapEl.style.fill = CONFIG.colors.hoverCountry;
+              if (COUNTRIES[countryName].hasStroke) {
+                mapEl.style.stroke = 'transparent';
+              }
+            });
           }
         });
         
@@ -13870,18 +13854,24 @@
         el.addEventListener('mouseleave', () => {
           const slide = document.querySelector(`.swiper-slide.${countryName}`);
           if (!slide || !slide.classList.contains('active')) {
+            // Reset bounce animation
             el.classList.remove('location-bounce-hover');
             el.style.transform = 'translateY(0)';
             el.style.fill = CONFIG.colors.defaultLocation;
+            
+            // Reset country color
+            mapElements.forEach(mapEl => {
+              mapEl.style.fill = '';
+              if (COUNTRIES[countryName].hasStroke) {
+                mapEl.style.stroke = '';
+              }
+            });
           }
         });
       });
     });
   }
 
-  /**
-   * Setup keyboard navigation
-   */
   function setupKeyboardNavigation() {
     document.addEventListener('keydown', (e) => {
       if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
@@ -14112,7 +14102,7 @@
     const locationElements = document.querySelectorAll(`.${countryData.locationClass}`);
 
     if (isHighlighted) {
-      mapElements.forEach(el => el.style.fill = CONFIG.colors.primary);
+      mapElements.forEach(el => el.style.fill = CONFIG.colors.hoverCountry);
       highlightLocationMarkers(locationElements, true);
     } else {
       mapElements.forEach(el => el.style.fill = '');
