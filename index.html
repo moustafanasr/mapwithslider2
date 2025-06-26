@@ -13623,14 +13623,12 @@
 
     <script>
   /**
- * Country Map Interactive Component
- * 
+ * Interactive Country Map with Bounce Animation on Hover
  * Features:
- * - Swiper carousel for country selection
- * - Interactive map with hover/click effects
- * - Animated transitions between states
+ * - Swiper carousel navigation
+ * - Interactive map with bounce animations on hover
+ * - Smooth transitions between states
  * - Keyboard navigation support
- * - Responsive design
  */
 
 (function() {
@@ -13645,10 +13643,11 @@
       defaultLocation: '#CE0F48'
     },
     animations: {
-      duration: '0.3s',
-      easing: 'ease',
-      liftDistance: '-5px',
-      clickFeedbackDistance: '2px'
+      duration: '0.5s',
+      easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+      bounceDistance: '10px',
+      activeDistance: '-5px',
+      initialDelay: 300
     },
     defaultCountry: 'Syria',
     swiper: {
@@ -13690,15 +13689,41 @@
     isAnimating: false
   };
 
+  /* ----------------------------
+   * Initialization Functions
+   * ---------------------------- */
+
   /**
    * Initialize the application
    */
   function init() {
+    injectBounceAnimationStyles();
     cacheDOMElements();
     initSwiper();
-    setupEventListeners();
     setupTransitions();
-    activateCountry(CONFIG.defaultCountry);
+    setupEventListeners();
+    setTimeout(() => activateCountry(CONFIG.defaultCountry), CONFIG.animations.initialDelay);
+  }
+
+  /**
+   * Inject the bounce animation CSS
+   */
+  function injectBounceAnimationStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes bounceAnimation {
+        0% { transform: translateY(0) }
+        25% { transform: translateY(-${CONFIG.animations.bounceDistance}) }
+        50% { transform: translateY(0) }
+        75% { transform: translateY(-${CONFIG.animations.bounceDistance}) }
+        100% { transform: translateY(0) }
+      }
+      
+      .location-bounce-hover {
+        animation: bounceAnimation ${CONFIG.animations.duration} ${CONFIG.animations.easing} forwards;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**
@@ -13731,17 +13756,6 @@
   }
 
   /**
-   * Setup global event listeners
-   */
-  function setupEventListeners() {
-    setupTextElementInteractions();
-    setupSlideInteractions();
-    setupMapInteractions();
-    setupLocationMarkerInteractions();
-    setupKeyboardNavigation();
-  }
-
-  /**
    * Setup CSS transitions for animated elements
    */
   function setupTransitions() {
@@ -13754,6 +13768,21 @@
     document.querySelectorAll('[class^="changeColorLocation"]').forEach(el => {
       el.style.transition = `transform ${CONFIG.animations.duration} ${CONFIG.animations.easing}, fill ${CONFIG.animations.duration} ${CONFIG.animations.easing}`;
     });
+  }
+
+  /* ----------------------------
+   * Event Handling Setup
+   * ---------------------------- */
+
+  /**
+   * Setup all event listeners
+   */
+  function setupEventListeners() {
+    setupTextElementInteractions();
+    setupSlideInteractions();
+    setupMapInteractions();
+    setupLocationMarkerInteractions();
+    setupKeyboardNavigation();
   }
 
   /**
@@ -13802,7 +13831,6 @@
 
       mapElements.forEach(el => {
         el.addEventListener('click', () => handleMapClick(countryName));
-        
         el.addEventListener('mouseenter', () => handleMapHover(countryName, locationElements));
         el.addEventListener('mouseleave', () => handleMapHoverEnd(countryName, locationElements));
       });
@@ -13810,7 +13838,7 @@
   }
 
   /**
-   * Setup interactions for location markers
+   * Setup interactions for location markers with bounce animation on hover
    */
   function setupLocationMarkerInteractions() {
     Object.keys(COUNTRIES).forEach(countryName => {
@@ -13821,13 +13849,32 @@
       locationElements.forEach(el => {
         el.style.cursor = 'pointer';
         
+        // Click handler
         el.addEventListener('click', (e) => {
           e.stopPropagation();
-          handleLocationClick(countryName, el);
+          handleLocationClick(countryName);
         });
         
-        el.addEventListener('mouseenter', () => handleLocationHover(countryName, el, mapElements));
-        el.addEventListener('mouseleave', () => handleLocationHoverEnd(countryName, el, mapElements));
+        // Hover with bounce animation
+        el.addEventListener('mouseenter', () => {
+          const slide = document.querySelector(`.swiper-slide.${countryName}`);
+          if (!slide || !slide.classList.contains('active')) {
+            el.classList.remove('location-bounce-hover');
+            void el.offsetWidth; // Trigger reflow
+            el.classList.add('location-bounce-hover');
+            el.style.fill = CONFIG.colors.activeLocation;
+          }
+        });
+        
+        // Hover end
+        el.addEventListener('mouseleave', () => {
+          const slide = document.querySelector(`.swiper-slide.${countryName}`);
+          if (!slide || !slide.classList.contains('active')) {
+            el.classList.remove('location-bounce-hover');
+            el.style.transform = 'translateY(0)';
+            el.style.fill = CONFIG.colors.defaultLocation;
+          }
+        });
       });
     });
   }
@@ -13843,7 +13890,10 @@
     });
   }
 
-  // Event Handlers
+  /* ----------------------------
+   * Event Handlers
+   * ---------------------------- */
+
   async function handleTextClick(country) {
     if (state.isAnimating) return;
     await activateCountry(country);
@@ -13896,38 +13946,10 @@
     }
   }
 
-  async function handleLocationClick(country, element) {
+  async function handleLocationClick(country) {
     if (state.isAnimating) return;
-    
-    // Click feedback animation
-    element.style.transform = `translateY(${CONFIG.animations.clickFeedbackDistance})`;
-    setTimeout(() => {
-      element.style.transform = `translateY(${CONFIG.animations.liftDistance})`;
-      activateCountry(country);
-      centerSlide(country);
-    }, 100);
-  }
-
-  function handleLocationHover(country, element, mapElements) {
-    const slide = document.querySelector(`.swiper-slide.${country}`);
-    if (slide) slide.classList.add('location-hover');
-    
-    if (!slide || !slide.classList.contains('active')) {
-      element.style.transform = `translateY(${CONFIG.animations.liftDistance})`;
-      element.style.fill = CONFIG.colors.activeLocation;
-      highlightMap(mapElements, true);
-    }
-  }
-
-  function handleLocationHoverEnd(country, element, mapElements) {
-    const slide = document.querySelector(`.swiper-slide.${country}`);
-    if (slide) slide.classList.remove('location-hover');
-    
-    if (!slide || !slide.classList.contains('active')) {
-      element.style.transform = 'translateY(0)';
-      element.style.fill = CONFIG.colors.defaultLocation;
-      highlightMap(mapElements, false);
-    }
+    await activateCountry(country);
+    centerSlide(country);
   }
 
   function handleKeyboardNavigation(key) {
@@ -13950,7 +13972,10 @@
     DOM.swiper.slideTo(targetIndex);
   }
 
-  // Core Functions
+  /* ----------------------------
+   * Core Functions
+   * ---------------------------- */
+
   async function activateCountry(countryName) {
     if (state.isAnimating || state.currentCountry === countryName) return;
     
@@ -14002,6 +14027,7 @@
 
     // Reset all location markers
     document.querySelectorAll('[class^="changeColorLocation"]').forEach(el => {
+      el.classList.remove('location-bounce-hover');
       el.style.fill = CONFIG.colors.defaultLocation;
       el.style.stroke = 'transparent';
       el.style.transform = 'translateY(0)';
@@ -14010,7 +14036,7 @@
     const countryData = COUNTRIES[countryName];
     if (!countryData) return;
 
-    // Highlight active country
+    // Highlight active country on map
     const mapElements = document.querySelectorAll(`.${countryData.mapClass}`);
     mapElements.forEach(el => {
       el.classList.add('active');
@@ -14020,11 +14046,11 @@
       }
     });
 
-    // Highlight active location markers
+    // Set active location markers
     const locationElements = document.querySelectorAll(`.${countryData.locationClass}`);
     locationElements.forEach(el => {
       el.style.fill = CONFIG.colors.activeLocation;
-      el.style.transform = `translateY(${CONFIG.animations.liftDistance})`;
+      el.style.transform = `translateY(${CONFIG.animations.activeDistance})`;
     });
   }
 
@@ -14059,15 +14085,18 @@
       // Handle overflow if needed
       const cards = activeCards.querySelectorAll('.card');
       if (cards.length > 3) {
-        activeCards.style.maxHeight = '470px';
+        activeCards.style.maxHeight = '500px';
         activeCards.style.overflowY = 'auto';
       }
     }
   }
 
-  // Helper Functions
+  /* ----------------------------
+   * Helper Functions
+   * ---------------------------- */
+
   function getCountryFromElement(element) {
-    for (const [country, className] of Object.entries(COUNTRIES)) {
+    for (const country in COUNTRIES) {
       if (element.classList.contains(`showText${country}`)) {
         return country;
       }
@@ -14093,14 +14122,16 @@
 
   function highlightLocationMarkers(elements, isHighlighted) {
     elements.forEach(el => {
-      el.style.fill = isHighlighted ? CONFIG.colors.activeLocation : CONFIG.colors.defaultLocation;
-      el.style.transform = isHighlighted ? `translateY(${CONFIG.animations.liftDistance})` : 'translateY(0)';
-    });
-  }
-
-  function highlightMap(elements, isHighlighted) {
-    elements.forEach(el => {
-      el.style.fill = isHighlighted ? CONFIG.colors.primary : '';
+      if (isHighlighted) {
+        el.classList.remove('location-bounce-hover');
+        void el.offsetWidth; // Trigger reflow
+        el.classList.add('location-bounce-hover');
+        el.style.fill = CONFIG.colors.activeLocation;
+      } else {
+        el.classList.remove('location-bounce-hover');
+        el.style.transform = 'translateY(0)';
+        el.style.fill = CONFIG.colors.defaultLocation;
+      }
     });
   }
 
@@ -14115,6 +14146,17 @@
   function centerSlideByElement(slide) {
     const slideIndex = Array.from(DOM.countrySlides).indexOf(slide);
     DOM.swiper.slideTo(slideIndex);
+  }
+
+  function setLocationMarkerColor(countryName, color) {
+    const countryData = COUNTRIES[countryName];
+    if (countryData) {
+      const locationElements = document.querySelectorAll(`.${countryData.locationClass}`);
+      locationElements.forEach(el => {
+        el.style.fill = color;
+        el.style.stroke = 'transparent';
+      });
+    }
   }
 
   function updateTextColors(countryName, color) {
